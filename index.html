@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Fretboard Trainer</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            background-color: #050811;
+            font-family: var(--font-sans);
+            color: #f8fafc;
+            touch-action: manipulation;
+        }
+
+        /* 20:9 Mobile Container Architecture */
+        /* Full screen on actual mobile devices, sleek 20:9 phone frame on larger screens */
+        .app-shell {
+            width: 100%;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at 15% 20%, #131c31 0%, #090d16 55%, #05070c 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (min-width: 500px) {
+            body {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: radial-gradient(circle at center, #1e293b 0%, #060911 100%);
+            }
+            .app-shell {
+                height: min(94dvh, 920px);
+                width: calc(min(94dvh, 920px) * (9 / 20));
+                min-width: 340px;
+                border-radius: 42px;
+                border: 7px solid #1e293b;
+                box-shadow: 
+                    0 25px 60px -15px rgba(0, 0, 0, 0.85),
+                    0 0 0 1px rgba(255, 255, 255, 0.08),
+                    inset 0 0 20px rgba(0, 0, 0, 0.5);
+            }
+        }
+
+        /* Note Buttons Styling for Ergonomic Right-Thumb Play */
+        .note-btn {
+            position: relative;
+            transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), 
+                        background-color 0.15s ease, 
+                        border-color 0.15s ease, 
+                        box-shadow 0.15s ease;
+            font-family: var(--font-mono);
+        }
+
+        .note-btn:active:not(:disabled) {
+            transform: scale(0.93);
+        }
+
+        /* Default states for natural vs sharp notes */
+        .note-natural {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            color: #f8fafc;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .note-sharp {
+            background: linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(10, 15, 29, 0.98));
+            border: 1px solid rgba(99, 102, 241, 0.28);
+            color: #c7d2fe;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(129, 140, 248, 0.1);
+        }
+
+        /* Highlight States on Answer */
+        .note-correct {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            border-color: #6ee7b7 !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 18px rgba(16, 185, 129, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.4) !important;
+            transform: scale(1.03);
+            z-index: 10;
+        }
+
+        .note-wrong {
+            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+            border-color: #fca5a5 !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 18px rgba(239, 68, 68, 0.55) !important;
+            animation: shake 0.35s cubic-bezier(.36,.07,.19,.97) both;
+            z-index: 10;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(3px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* Subtle card glassmorphism */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Custom Select Dropdown Styling */
+        select.custom-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1rem;
+        }
+
+        /* Progress Bar Animation */
+        @keyframes countdown {
+            from { transform: scaleX(1); }
+            to { transform: scaleX(0); }
+        }
+        .progress-Drain {
+            transform-origin: left;
+            animation: countdown var(--delay-ms, 1000ms) linear forwards;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 20:9 Portrait App Container -->
+    <div class="app-shell">
+        
+        <!-- Decorative Ambient Glows -->
+        <div class="pointer-events-none absolute -top-24 -left-24 w-64 h-64 bg-indigo-600/15 rounded-full blur-3xl"></div>
+        <div class="pointer-events-none absolute bottom-12 -left-20 w-56 h-56 bg-cyan-500/10 rounded-full blur-3xl"></div>
+
+        <!-- HEADER -->
+        <header class="h-14 px-4 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/40 shrink-0 z-20">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                    <!-- Minimalist Musical Tuning Fork / Pulse Icon -->
+                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-base font-extrabold tracking-tight text-white leading-none">Fretboard Trainer</h1>
+                    <p id="activeRangeBadge" class="text-[10px] font-medium text-slate-400 tracking-wide mt-0.5">
+                        Strings 1–6 • Frets 0–24
+                    </p>
+                </div>
+            </div>
+
+            <!-- Settings Gear Icon Button -->
+            <button id="openSettingsBtn" aria-label="Open Settings" class="w-10 h-10 rounded-xl bg-slate-800/70 hover:bg-slate-800 active:scale-95 border border-slate-700/60 flex items-center justify-center text-slate-300 hover:text-white transition-all shadow-sm">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </header>
+
+        <!-- MAIN WORKSPACE: Split Left (Info/Question/Score/Feedback) & Right (One-Handed Thumb Column) -->
+        <main class="flex-1 flex flex-row min-h-0 overflow-hidden p-3 gap-3 z-10">
+            
+            <!-- LEFT COLUMN: Question, Score, and Feedback -->
+            <div class="flex-1 flex flex-col justify-between min-w-0 py-1">
+                
+                <!-- TOP SECTION: Score Counter + Main Question Area -->
+                <div class="space-y-3">
+                    
+                    <!-- Score Counter Card -->
+                    <div class="glass-panel rounded-2xl p-3 flex items-center justify-between shadow-md">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="scoreDisplay" class="text-sm sm:text-base font-extrabold tracking-tight text-white">
+                                Score: 0 / 0
+                            </span>
+                        </div>
+                        <span id="accuracyBadge" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-800/90 text-indigo-300 border border-slate-700/60">
+                            0%
+                        </span>
+                    </div>
+
+                    <!-- Main Question Card (Positioned prominently near the top) -->
+                    <div class="glass-panel rounded-3xl p-4 sm:p-5 shadow-xl border border-indigo-500/20 relative overflow-hidden">
+                        <div class="flex items-center justify-between gap-1.5 mb-2">
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-400 shrink-0">
+                                Identify Note
+                            </span>
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <span id="tuningHintBadge" class="text-[10px] font-mono font-semibold text-slate-300 bg-slate-900/90 px-2 py-0.5 rounded-full border border-slate-700/80 truncate">
+                                    E Std (E-A-D-G-B-E)
+                                </span>
+                                <button id="replayNoteBtn" type="button" title="Replay Question Note" aria-label="Replay Question Note" class="w-6 h-6 rounded-full bg-indigo-500/20 hover:bg-indigo-500/30 active:scale-90 border border-indigo-400/30 flex items-center justify-center text-indigo-300 transition shrink-0">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Prominent Question Text -->
+                        <h2 id="questionText" class="text-xl sm:text-2xl font-black text-white leading-snug tracking-tight my-1">
+                            What note is on the <span class="text-indigo-400 underline decoration-indigo-500/40 decoration-2 underline-offset-4">4th string</span>, <span class="text-cyan-400 underline decoration-cyan-500/40 decoration-2 underline-offset-4">3rd fret</span>?
+                        </h2>
+
+                        <!-- Quick Callout Badges for instant glance while commuting -->
+                        <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-800/80">
+                            <div class="bg-slate-900/75 rounded-xl p-2.5 border border-slate-800/90">
+                                <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-semibold">String</span>
+                                <div class="flex items-baseline gap-1.5 mt-0.5">
+                                    <span id="stringNumberCallout" class="text-lg font-black font-mono text-indigo-400">4th</span>
+                                    <span id="stringOpenNoteCallout" class="text-[11px] font-mono text-slate-500">(D)</span>
+                                </div>
+                            </div>
+                            <div class="bg-slate-900/75 rounded-xl p-2.5 border border-slate-800/90">
+                                <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Fret</span>
+                                <div class="flex items-baseline gap-1.5 mt-0.5">
+                                    <span id="fretNumberCallout" class="text-lg font-black font-mono text-cyan-400">3rd</span>
+                                    <span id="fretTypeCallout" class="text-[11px] font-mono text-slate-500">fret</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MIDDLE SECTION: Feedback Area -->
+                <div id="feedbackCard" class="glass-panel rounded-3xl p-4 my-auto flex flex-col items-center justify-center text-center min-h-[135px] transition-all duration-200 relative overflow-hidden">
+                    <!-- Status Icon -->
+                    <div id="feedbackIconContainer" class="w-10 h-10 rounded-2xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center mb-2.5 text-indigo-400 transition-transform duration-200">
+                        <svg id="feedbackIcon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                        </svg>
+                    </div>
+                    
+                    <!-- Main Feedback Text -->
+                    <p id="feedbackText" class="text-base sm:text-lg font-extrabold tracking-tight text-slate-200 leading-tight">
+                        Tap a Note!
+                    </p>
+                    <p id="feedbackSubtext" class="text-xs text-slate-400 mt-1">
+                        Use your right thumb on the note column
+                    </p>
+
+                    <!-- Auto-advance progress bar -->
+                    <div id="nextTimerBar" class="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500/80 hidden"></div>
+                </div>
+
+                <!-- BOTTOM SECTION: Commuter Ergonomic Info & Reset Score -->
+                <div class="glass-panel rounded-2xl p-3 flex items-center justify-between text-xs text-slate-400">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] font-bold">🔥 <span id="streakCount">0</span></span>
+                        <span class="text-[11px] text-slate-400">Streak</span>
+                    </div>
+                    <button id="resetScoreBtn" class="text-[11px] font-semibold text-slate-400 hover:text-white active:scale-95 px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 transition">
+                        Reset Score
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: 12 Musical Note Buttons (A to G# using Sharps Exclusively) -->
+            <!-- Sized and spaced for effortless one-handed right-thumb reach -->
+            <div class="w-[92px] sm:w-[104px] shrink-0 flex flex-col justify-between gap-1.5 h-full select-none" id="noteButtonsColumn" role="group" aria-label="Musical Note Buttons">
+                <!-- Populated dynamically or statically in exact order: A, A#, B, C, C#, D, D#, E, F, F#, G, G# -->
+                <button type="button" data-note="A"  class="note-btn note-natural flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>A</span><span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                </button>
+                <button type="button" data-note="A#" class="note-btn note-sharp flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>A<span class="text-indigo-400 font-normal text-sm ml-0.5">#</span></span><span class="w-1.5 h-1.5 rounded-full bg-indigo-500/40"></span>
+                </button>
+                <button type="button" data-note="B"  class="note-btn note-natural flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>B</span><span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                </button>
+                <button type="button" data-note="C"  class="note-btn note-natural flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>C</span><span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                </button>
+                <button type="button" data-note="C#" class="note-btn note-sharp flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>C<span class="text-indigo-400 font-normal text-sm ml-0.5">#</span></span><span class="w-1.5 h-1.5 rounded-full bg-indigo-500/40"></span>
+                </button>
+                <button type="button" data-note="D"  class="note-btn note-natural flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>D</span><span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                </button>
+                <button type="button" data-note="D#" class="note-btn note-sharp flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>D<span class="text-indigo-400 font-normal text-sm ml-0.5">#</span></span><span class="w-1.5 h-1.5 rounded-full bg-indigo-500/40"></span>
+                </button>
+                <button type="button" data-note="E"  class="note-btn note-natural flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>E</span><span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                </button>
+                <button type="button" data-note="F"  class="note-btn note-natural flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>F</span><span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                </button>
+                <button type="button" data-note="F#" class="note-btn note-sharp flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>F<span class="text-indigo-400 font-normal text-sm ml-0.5">#</span></span><span class="w-1.5 h-1.5 rounded-full bg-indigo-500/40"></span>
+                </button>
+                <button type="button" data-note="G"  class="note-btn note-natural flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>G</span><span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                </button>
+                <button type="button" data-note="G#" class="note-btn note-sharp flex-1 w-full rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-between px-3.5">
+                    <span>G<span class="text-indigo-400 font-normal text-sm ml-0.5">#</span></span><span class="w-1.5 h-1.5 rounded-full bg-indigo-500/40"></span>
+                </button>
+            </div>
+
+        </main>
+
+        <!-- SETTINGS / FILTERS MODAL -->
+        <div id="settingsModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200" aria-hidden="true">
+            <div class="w-full max-w-[340px] bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl transform scale-95 transition-transform duration-200" id="settingsModalContent">
+                
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div>
+                        <h3 class="text-lg font-extrabold text-white">Practice Range</h3>
+                        <p class="text-xs text-slate-400">Customize active strings & frets</p>
+                    </div>
+                    <button id="closeSettingsBtn" aria-label="Close Settings" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Settings Controls -->
+                <div class="space-y-3 my-3.5">
+
+                    <!-- Scramble Note Buttons Toggle (ON by default) -->
+                    <div class="flex items-center justify-between bg-slate-950/90 border border-slate-800 rounded-2xl px-3.5 py-2.5">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+                                </svg>
+                            </div>
+                            <div>
+                                <label for="scrambleToggleInput" class="block text-xs font-extrabold text-white cursor-pointer">Scramble Note Buttons</label>
+                                <span class="block text-[10px] text-slate-400">Randomize button order to prevent counting</span>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="scrambleToggleInput" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- Guitar Sound Toggle (OFF by default) -->
+                    <div class="flex items-center justify-between bg-slate-950/90 border border-slate-800 rounded-2xl px-3.5 py-2.5">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <label for="soundToggleInput" class="block text-xs font-extrabold text-white cursor-pointer">Play Guitar Sound</label>
+                                <span class="block text-[10px] text-slate-400">Audible notes on question & tap</span>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="soundToggleInput" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- Guitar Tuning Selector (E Standard down to A Standard) -->
+                    <div>
+                        <label for="tuningSelect" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                            Guitar Tuning
+                        </label>
+                        <select id="tuningSelect" class="custom-select w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-white focus:outline-none focus:border-indigo-500">
+                            <!-- Populated E Standard to A Standard -->
+                        </select>
+                    </div>
+                    
+                    <!-- String Range (1 to 6) -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="stringStartSelect" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                                String Start
+                            </label>
+                            <select id="stringStartSelect" class="custom-select w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-indigo-500">
+                                <!-- Populated 1-6 -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="stringEndSelect" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                                String End
+                            </label>
+                            <select id="stringEndSelect" class="custom-select w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-indigo-500">
+                                <!-- Populated 1-6 -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Fret Range (0 to 24) -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="fretStartSelect" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                                Fret Start
+                            </label>
+                            <select id="fretStartSelect" class="custom-select w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-indigo-500">
+                                <!-- Populated 0-24 -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="fretEndSelect" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                                Fret End
+                            </label>
+                            <select id="fretEndSelect" class="custom-select w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-indigo-500">
+                                <!-- Populated 0-24 -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Tuning Reference Info Box -->
+                    <div class="bg-slate-950/70 rounded-xl p-2.5 border border-slate-800/80 text-[11px] text-slate-400 leading-relaxed">
+                        <span class="text-slate-200 font-semibold block mb-0.5">Active Open Strings (6th to 1st):</span>
+                        <span id="modalTuningReferenceText">6th (E) • 5th (A) • 4th (D) • 3rd (G) • 2nd (B) • 1st (E)</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2">
+                    <button id="resetDefaultsBtn" type="button" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 transition active:scale-95">
+                        Defaults
+                    </button>
+                    <button id="saveSettingsBtn" type="button" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 transition active:scale-95">
+                        Apply & New Question
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- EMBEDDED APPLICATION JAVASCRIPT -->
+    <script>
+        (function () {
+            'use strict';
+
+            /**
+             * CHROMATIC SCALE (Sharps Exclusively)
+             * Ordered starting from A to G#
+             */
+            const CHROMATIC_NOTES = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
+
+            /**
+             * BASE E-STANDARD GUITAR TUNING (Strings 1 to 6)
+             * Includes MIDI pitch numbers for accurate acoustic frequency synthesis:
+             * 6th=E2 (40), 5th=A2 (45), 4th=D3 (50), 3rd=G3 (55), 2nd=B3 (59), 1st=E4 (64)
+             */
+            const BASE_E_STANDARD_MIDI = {
+                1: 64, // E4
+                2: 59, // B3
+                3: 55, // G3
+                4: 50, // D3
+                5: 45, // A2
+                6: 40  // E2
+            };
+
+            const BASE_OPEN_STRING_NOTES = {
+                1: 'E',
+                2: 'B',
+                3: 'G',
+                4: 'D',
+                5: 'A',
+                6: 'E'
+            };
+
+            /**
+             * TUNING PRESETS (E Standard down to A Standard in semitone steps)
+             */
+            const TUNING_PRESETS = [
+                { id: 'E',  name: 'E Standard',  shortName: 'E Std',  offset: 0,  notesLabel: 'E - A - D - G - B - E' },
+                { id: 'D#', name: 'D# Standard', shortName: 'D# Std', offset: -1, notesLabel: 'D# - G# - C# - F# - A# - D#' },
+                { id: 'D',  name: 'D Standard',  shortName: 'D Std',  offset: -2, notesLabel: 'D - G - C - F - A - D' },
+                { id: 'C#', name: 'C# Standard', shortName: 'C# Std', offset: -3, notesLabel: 'C# - F# - B - E - G# - C#' },
+                { id: 'C',  name: 'C Standard',  shortName: 'C Std',  offset: -4, notesLabel: 'C - F - A# - D# - G - C' },
+                { id: 'B',  name: 'B Standard',  shortName: 'B Std',  offset: -5, notesLabel: 'B - E - A - D - F# - B' },
+                { id: 'A#', name: 'A# Standard', shortName: 'A# Std', offset: -6, notesLabel: 'A# - D# - G# - C# - F - A#' },
+                { id: 'A',  name: 'A Standard',  shortName: 'A Std',  offset: -7, notesLabel: 'A - D - G - C - E - A' }
+            ];
+
+            /**
+             * APPLICATION STATE
+             */
+            const state = {
+                stringStart: 1,
+                stringEnd: 6,
+                fretStart: 0,
+                fretEnd: 24,
+                tuningOffset: 0, // 0 = E Standard
+                soundEnabled: false, // OFF by default
+                scrambleNotes: true, // ON by default
+                currentString: 4,
+                currentFret: 3,
+                currentAnswer: 'F',
+                lastQuestionKey: null,
+                correctCount: 0,
+                totalAttempts: 0,
+                streak: 0,
+                isLocked: false,
+                nextQuestionTimer: null,
+                // Silent Spaced-Repetition Queue for botched questions:
+                // Array of { string: number, fret: number, turnsLeft: number }
+                retryQueue: []
+            };
+
+            /**
+             * WEB AUDIO API - REALISTIC PLUCKED GUITAR SYNTHESIZER
+             * Uses Karplus-Strong physical string modeling + warm body resonance
+             */
+            const guitarAudio = {
+                ctx: null,
+                unlocked: false,
+                pendingQuestionPlay: false,
+
+                initContext() {
+                    if (!this.ctx) {
+                        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        if (AudioCtx) {
+                            this.ctx = new AudioCtx();
+                        }
+                    }
+                    if (this.ctx && this.ctx.state === 'suspended') {
+                        this.ctx.resume();
+                    }
+                },
+
+                midiToFreq(midiNote) {
+                    return 440 * Math.pow(2, (midiNote - 69) / 12);
+                },
+
+                /**
+                 * Synthesizes a realistic acoustic/clean electric guitar pluck at `freq` Hz
+                 */
+                playFrequency(freq, duration = 1.85) {
+                    if (!state.soundEnabled) return;
+                    this.initContext();
+                    if (!this.ctx) return;
+
+                    // If browser blocked autoplay before first gesture, flag it to play on unlock
+                    if (this.ctx.state === 'suspended') {
+                        this.pendingQuestionPlay = true;
+                    }
+
+                    try {
+                        const ctx = this.ctx;
+                        const now = ctx.currentTime;
+                        const sampleRate = ctx.sampleRate;
+
+                        // Karplus-Strong physical string buffer
+                        const totalSamples = Math.floor(sampleRate * duration);
+                        const audioBuffer = ctx.createBuffer(1, totalSamples, sampleRate);
+                        const output = audioBuffer.getChannelData(0);
+
+                        const period = Math.max(2, Math.round(sampleRate / freq));
+                        const ringBuffer = new Float32Array(period);
+
+                        // Initialize delay line with smoothed pick-excitation noise burst
+                        let prevNoise = 0;
+                        for (let i = 0; i < period; i++) {
+                            const white = Math.random() * 2 - 1;
+                            // Low-pass filter the initial noise burst for a warm finger/pick attack
+                            ringBuffer[i] = 0.65 * white + 0.35 * prevNoise;
+                            prevNoise = white;
+                        }
+
+                        // Lower strings sustain longer; higher notes damp slightly faster
+                        const stretchDecay = Math.min(0.9965, 0.9915 + (110 / (freq + 100)) * 0.0045);
+                        let ringIndex = 0;
+
+                        for (let i = 0; i < totalSamples; i++) {
+                            const nextIndex = (ringIndex + 1) % period;
+                            const currentSample = ringBuffer[ringIndex];
+                            output[i] = currentSample;
+
+                            // 2-point averaging filter along the delay loop
+                            ringBuffer[ringIndex] = ((currentSample + ringBuffer[nextIndex]) * 0.5) * stretchDecay;
+                            ringIndex = nextIndex;
+                        }
+
+                        const ksSource = ctx.createBufferSource();
+                        ksSource.buffer = audioBuffer;
+
+                        // Add a warm fundamental + 2nd harmonic body transient so low tunings (down to A1) sound rich on phone speakers
+                        const bodyOsc = ctx.createOscillator();
+                        bodyOsc.type = 'triangle';
+                        bodyOsc.frequency.setValueAtTime(freq, now);
+
+                        const bodyGain = ctx.createGain();
+                        bodyGain.gain.setValueAtTime(0.001, now);
+                        bodyGain.gain.linearRampToValueAtTime(0.16, now + 0.008);
+                        bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+
+                        // Guitar body resonance filter
+                        const bodyFilter = ctx.createBiquadFilter();
+                        bodyFilter.type = 'lowpass';
+                        bodyFilter.frequency.setValueAtTime(Math.min(4800, freq * 8), now);
+                        bodyFilter.frequency.exponentialRampToValueAtTime(Math.max(600, freq * 2.5), now + 1.1);
+
+                        // Master envelope for this note
+                        const masterGain = ctx.createGain();
+                        masterGain.gain.setValueAtTime(0.55, now);
+                        masterGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+                        // Wire graph
+                        ksSource.connect(bodyFilter);
+                        bodyOsc.connect(bodyGain);
+                        bodyGain.connect(bodyFilter);
+                        bodyFilter.connect(masterGain);
+                        masterGain.connect(ctx.destination);
+
+                        ksSource.start(now);
+                        bodyOsc.start(now);
+                        bodyOsc.stop(now + 0.46);
+                    } catch (err) {
+                        // Fail silently if audio context isn't ready
+                    }
+                },
+
+                /**
+                 * Plays the exact pitch for a given guitar string (1-6) and fret (0-24)
+                 * accounting for the active tuning offset.
+                 */
+                playStringFret(stringNum, fretNum) {
+                    const baseMidi = BASE_E_STANDARD_MIDI[stringNum];
+                    const targetMidi = baseMidi + state.tuningOffset + fretNum;
+                    const freq = this.midiToFreq(targetMidi);
+                    this.playFrequency(freq);
+                },
+
+                /**
+                 * Plays the note button tapped by the user in the octave/string context
+                 * of the current question so it sounds natural and musical.
+                 */
+                playTappedNoteInContext(noteName) {
+                    const openNoteName = getOpenStringNote(state.currentString);
+                    const openNoteIndex = CHROMATIC_NOTES.indexOf(openNoteName);
+                    const tappedNoteIndex = CHROMATIC_NOTES.indexOf(noteName);
+
+                    // Find the semitone offset (0-11) above the open string
+                    const baseSemitoneOffset = (tappedNoteIndex - openNoteIndex + 12) % 12;
+
+                    // Pick the octave on this string closest to the question's fret
+                    let bestFret = baseSemitoneOffset;
+                    if (Math.abs((baseSemitoneOffset + 12) - state.currentFret) < Math.abs(bestFret - state.currentFret)) {
+                        bestFret = baseSemitoneOffset + 12;
+                    }
+                    if (Math.abs((baseSemitoneOffset + 24) - state.currentFret) < Math.abs(bestFret - state.currentFret)) {
+                        bestFret = baseSemitoneOffset + 24;
+                    }
+
+                    this.playStringFret(state.currentString, bestFret);
+                }
+            };
+
+            /**
+             * DOM ELEMENTS
+             */
+            const els = {
+                scoreDisplay: document.getElementById('scoreDisplay'),
+                accuracyBadge: document.getElementById('accuracyBadge'),
+                streakCount: document.getElementById('streakCount'),
+                activeRangeBadge: document.getElementById('activeRangeBadge'),
+                tuningHintBadge: document.getElementById('tuningHintBadge'),
+                replayNoteBtn: document.getElementById('replayNoteBtn'),
+                questionText: document.getElementById('questionText'),
+                stringNumberCallout: document.getElementById('stringNumberCallout'),
+                stringOpenNoteCallout: document.getElementById('stringOpenNoteCallout'),
+                fretNumberCallout: document.getElementById('fretNumberCallout'),
+                fretTypeCallout: document.getElementById('fretTypeCallout'),
+                feedbackCard: document.getElementById('feedbackCard'),
+                feedbackIconContainer: document.getElementById('feedbackIconContainer'),
+                feedbackIcon: document.getElementById('feedbackIcon'),
+                feedbackText: document.getElementById('feedbackText'),
+                feedbackSubtext: document.getElementById('feedbackSubtext'),
+                nextTimerBar: document.getElementById('nextTimerBar'),
+                noteButtonsColumn: document.getElementById('noteButtonsColumn'),
+                noteButtons: Array.from(document.querySelectorAll('.note-btn')),
+                resetScoreBtn: document.getElementById('resetScoreBtn'),
+                // Modal Elements
+                openSettingsBtn: document.getElementById('openSettingsBtn'),
+                closeSettingsBtn: document.getElementById('closeSettingsBtn'),
+                settingsModal: document.getElementById('settingsModal'),
+                settingsModalContent: document.getElementById('settingsModalContent'),
+                scrambleToggleInput: document.getElementById('scrambleToggleInput'),
+                soundToggleInput: document.getElementById('soundToggleInput'),
+                tuningSelect: document.getElementById('tuningSelect'),
+                modalTuningReferenceText: document.getElementById('modalTuningReferenceText'),
+                stringStartSelect: document.getElementById('stringStartSelect'),
+                stringEndSelect: document.getElementById('stringEndSelect'),
+                fretStartSelect: document.getElementById('fretStartSelect'),
+                fretEndSelect: document.getElementById('fretEndSelect'),
+                saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+                resetDefaultsBtn: document.getElementById('resetDefaultsBtn')
+            };
+
+            /**
+             * HELPER: Order or Scramble the 12 Note Buttons in the Right Column
+             * When `state.scrambleNotes` is true, uses Fisher-Yates shuffle.
+             * When false, restores exact chromatic order starting from A (A, A#, B, ..., G#).
+             */
+            function updateNoteButtonsOrder() {
+                const buttonMap = new Map();
+                els.noteButtons.forEach(btn => {
+                    buttonMap.set(btn.getAttribute('data-note'), btn);
+                });
+
+                const targetOrder = [...CHROMATIC_NOTES];
+
+                if (state.scrambleNotes) {
+                    // Fisher-Yates shuffle
+                    for (let i = targetOrder.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [targetOrder[i], targetOrder[j]] = [targetOrder[j], targetOrder[i]];
+                    }
+                }
+
+                // Re-append buttons in the computed order
+                const fragment = document.createDocumentFragment();
+                targetOrder.forEach(note => {
+                    const btn = buttonMap.get(note);
+                    if (btn) fragment.appendChild(btn);
+                });
+                els.noteButtonsColumn.appendChild(fragment);
+            }
+
+            /**
+             * HELPER: Format integer with English ordinal suffix (0th, 1st, 2nd, 3rd, 4th...)
+             */
+            function getOrdinal(n) {
+                const s = ["th", "st", "nd", "rd"];
+                const v = n % 100;
+                return n + (s[(v - 20) % 10] || s[v] || s[0]);
+            }
+
+            /**
+             * HELPER: Get the open string note for `stringNum` (1-6) given a tuning semitone offset
+             */
+            function getOpenStringNote(stringNum, tuningOffset = state.tuningOffset) {
+                const baseNote = BASE_OPEN_STRING_NOTES[stringNum];
+                const baseIndex = CHROMATIC_NOTES.indexOf(baseNote);
+                const shiftedIndex = (baseIndex + (tuningOffset % 12) + 12) % 12;
+                return CHROMATIC_NOTES[shiftedIndex];
+            }
+
+            /**
+             * HELPER: Get active tuning preset object
+             */
+            function getActiveTuningPreset(offset = state.tuningOffset) {
+                return TUNING_PRESETS.find(t => t.offset === offset) || TUNING_PRESETS[0];
+            }
+
+            /**
+             * HELPER: Calculate the exact chromatic note for a given string and fret
+             * under the current tuning.
+             */
+            function calculateNote(stringNum, fretNum) {
+                const openNote = getOpenStringNote(stringNum, state.tuningOffset);
+                const openNoteIndex = CHROMATIC_NOTES.indexOf(openNote);
+                const targetNoteIndex = (openNoteIndex + fretNum) % 12;
+                return CHROMATIC_NOTES[targetNoteIndex];
+            }
+
+            /**
+             * INITIALIZE SETTINGS DROPDOWNS
+             */
+            function populateDropdowns() {
+                // Populate Tuning Select (E Standard down to A Standard)
+                els.tuningSelect.innerHTML = '';
+                TUNING_PRESETS.forEach(preset => {
+                    const opt = new Option(`${preset.name} (${preset.notesLabel})`, preset.offset);
+                    els.tuningSelect.add(opt);
+                });
+
+                // Populate Strings 1 to 6
+                populateStringDropdownLabels(state.tuningOffset);
+
+                // Populate Frets 0 to 24
+                els.fretStartSelect.innerHTML = '';
+                els.fretEndSelect.innerHTML = '';
+                for (let f = 0; f <= 24; f++) {
+                    const label = f === 0 ? '0 (Open)' : `${getOrdinal(f)} Fret`;
+                    const optStart = new Option(label, f);
+                    const optEnd = new Option(label, f);
+                    els.fretStartSelect.add(optStart);
+                    els.fretEndSelect.add(optEnd);
+                }
+
+                syncDropdownsWithState();
+            }
+
+            /**
+             * Refresh String dropdown option labels & reference text when tuning changes in modal
+             */
+            function populateStringDropdownLabels(previewTuningOffset) {
+                const prevStart = els.stringStartSelect.value || state.stringStart;
+                const prevEnd = els.stringEndSelect.value || state.stringEnd;
+
+                els.stringStartSelect.innerHTML = '';
+                els.stringEndSelect.innerHTML = '';
+
+                for (let s = 1; s <= 6; s++) {
+                    const noteName = getOpenStringNote(s, previewTuningOffset);
+                    const optStart = new Option(`${getOrdinal(s)} String (${noteName})`, s);
+                    const optEnd = new Option(`${getOrdinal(s)} String (${noteName})`, s);
+                    els.stringStartSelect.add(optStart);
+                    els.stringEndSelect.add(optEnd);
+                }
+
+                els.stringStartSelect.value = prevStart;
+                els.stringEndSelect.value = prevEnd;
+
+                // Update reference box inside modal
+                const refParts = [];
+                for (let s = 6; s >= 1; s--) {
+                    refParts.push(`${ getOrdinal(s) } (${ getOpenStringNote(s, previewTuningOffset) })`);
+                }
+                els.modalTuningReferenceText.textContent = refParts.join(' • ');
+            }
+
+            function syncDropdownsWithState() {
+                els.scrambleToggleInput.checked = state.scrambleNotes;
+                els.soundToggleInput.checked = state.soundEnabled;
+                els.tuningSelect.value = state.tuningOffset;
+                populateStringDropdownLabels(state.tuningOffset);
+                els.stringStartSelect.value = state.stringStart;
+                els.stringEndSelect.value = state.stringEnd;
+                els.fretStartSelect.value = state.fretStart;
+                els.fretEndSelect.value = state.fretEnd;
+            }
+
+            /**
+             * AUTO-VALIDATE DROPDOWN RANGES WHEN CHANGED
+             * Ensures Start <= End seamlessly
+             */
+            function attachDropdownValidation() {
+                els.tuningSelect.addEventListener('change', () => {
+                    const selectedOffset = parseInt(els.tuningSelect.value, 10);
+                    populateStringDropdownLabels(selectedOffset);
+                });
+
+                els.stringStartSelect.addEventListener('change', () => {
+                    const startVal = parseInt(els.stringStartSelect.value, 10);
+                    const endVal = parseInt(els.stringEndSelect.value, 10);
+                    if (startVal > endVal) {
+                        els.stringEndSelect.value = startVal;
+                    }
+                });
+
+                els.stringEndSelect.addEventListener('change', () => {
+                    const startVal = parseInt(els.stringStartSelect.value, 10);
+                    const endVal = parseInt(els.stringEndSelect.value, 10);
+                    if (endVal < startVal) {
+                        els.stringStartSelect.value = endVal;
+                    }
+                });
+
+                els.fretStartSelect.addEventListener('change', () => {
+                    const startVal = parseInt(els.fretStartSelect.value, 10);
+                    const endVal = parseInt(els.fretEndSelect.value, 10);
+                    if (startVal > endVal) {
+                        els.fretEndSelect.value = startVal;
+                    }
+                });
+
+                els.fretEndSelect.addEventListener('change', () => {
+                    const startVal = parseInt(els.fretStartSelect.value, 10);
+                    const endVal = parseInt(els.fretEndSelect.value, 10);
+                    if (endVal < startVal) {
+                        els.fretStartSelect.value = endVal;
+                    }
+                });
+            }
+
+            /**
+             * SILENT SPACED-REPETITION QUEUE LOGIC
+             * Schedules a botched question to be re-asked within the next 2 to 7 questions randomly.
+             */
+            function scheduleBotchedQuestion(stringNum, fretNum) {
+                // Random integer between 2 and 7 inclusive
+                const randomDelay = Math.floor(Math.random() * 6) + 2;
+
+                // Prevent duplicate entries for the exact same string + fret in the queue
+                const existingItem = state.retryQueue.find(
+                    item => item.string === stringNum && item.fret === fretNum
+                );
+
+                if (existingItem) {
+                    // Keep it scheduled within 2-7 turns (never next immediate turn)
+                    existingItem.turnsLeft = Math.max(2, Math.min(existingItem.turnsLeft, randomDelay));
+                } else {
+                    state.retryQueue.push({
+                        string: stringNum,
+                        fret: fretNum,
+                        turnsLeft: randomDelay
+                    });
+                }
+            }
+
+            /**
+             * GENERATE NEXT QUESTION (CHECKS RETRY QUEUE FIRST, THEN RANDOM)
+             */
+            function generateQuestion() {
+                if (state.nextQuestionTimer) {
+                    clearTimeout(state.nextQuestionTimer);
+                    state.nextQuestionTimer = null;
+                }
+
+                state.isLocked = false;
+                resetButtonHighlights();
+                updateNoteButtonsOrder();
+                setFeedbackIdle();
+
+                const minString = Math.min(state.stringStart, state.stringEnd);
+                const maxString = Math.max(state.stringStart, state.stringEnd);
+                const minFret = Math.min(state.fretStart, state.fretEnd);
+                const maxFret = Math.max(state.fretStart, state.fretEnd);
+
+                const totalPossibleCombinations = (maxString - minString + 1) * (maxFret - minFret + 1);
+
+                // 1. Decrement turnsLeft on all scheduled botched questions in the queue
+                state.retryQueue.forEach(item => {
+                    item.turnsLeft -= 1;
+                });
+
+                // Discard any queued items that are no longer within the user's active filter range
+                state.retryQueue = state.retryQueue.filter(item =>
+                    item.string >= minString &&
+                    item.string <= maxString &&
+                    item.fret >= minFret &&
+                    item.fret <= maxFret
+                );
+
+                let pickedString = null;
+                let pickedFret = null;
+
+                // 2. Check if any queued botched question is due (turnsLeft <= 0)
+                // Also ensure it isn't the exact same question just asked on the immediately preceding turn
+                // (unless only 1 combination exists in the filter range)
+                const dueIndex = state.retryQueue.findIndex(item => {
+                    const key = `${item.string}-${item.fret}`;
+                    const isSameAsImmediatePrevious = (totalPossibleCombinations > 1) && (key === state.lastQuestionKey);
+                    return item.turnsLeft <= 0 && !isSameAsImmediatePrevious;
+                });
+
+                if (dueIndex !== -1) {
+                    const dueItem = state.retryQueue.splice(dueIndex, 1)[0];
+                    pickedString = dueItem.string;
+                    pickedFret = dueItem.fret;
+                } else {
+                    // 3. Otherwise pick a random string and fret within the user-defined range
+                    let key;
+                    let attempts = 0;
+                    do {
+                        pickedString = Math.floor(Math.random() * (maxString - minString + 1)) + minString;
+                        pickedFret = Math.floor(Math.random() * (maxFret - minFret + 1)) + minFret;
+                        key = `${pickedString}-${pickedFret}`;
+                        attempts++;
+                    } while (totalPossibleCombinations > 1 && key === state.lastQuestionKey && attempts < 10);
+                }
+
+                state.lastQuestionKey = `${pickedString}-${pickedFret}`;
+                state.currentString = pickedString;
+                state.currentFret = pickedFret;
+                state.currentAnswer = calculateNote(pickedString, pickedFret);
+
+                renderQuestionUI();
+
+                // Play the question's guitar note if sound is enabled
+                if (state.soundEnabled) {
+                    guitarAudio.playStringFret(state.currentString, state.currentFret);
+                }
+            }
+
+            /**
+             * RENDER QUESTION UI
+             */
+            function renderQuestionUI() {
+                const stringOrd = getOrdinal(state.currentString);
+                const fretOrd = getOrdinal(state.currentFret);
+                const activeTuning = getActiveTuningPreset();
+                const openNote = getOpenStringNote(state.currentString);
+
+                // Main Question Area phrasing: "What note is on the 4th string, 3rd fret?"
+                els.questionText.innerHTML = `What note is on the <span class="text-indigo-400 underline decoration-indigo-500/40 decoration-2 underline-offset-4">${stringOrd} string</span>, <span class="text-cyan-400 underline decoration-cyan-500/40 decoration-2 underline-offset-4">${fretOrd} fret</span>?`;
+
+                // Quick glance badges
+                els.stringNumberCallout.textContent = stringOrd;
+                els.stringOpenNoteCallout.textContent = `(${openNote})`;
+                els.fretNumberCallout.textContent = fretOrd;
+                els.fretTypeCallout.textContent = state.currentFret === 0 ? 'open' : 'fret';
+
+                // Update tuning badge on the question card
+                els.tuningHintBadge.textContent = `${activeTuning.shortName} (${activeTuning.notesLabel.replace(/\s+/g, '')})`;
+
+                // Update header active range & tuning subtitle
+                els.activeRangeBadge.textContent = `${activeTuning.shortName} • Strings ${state.stringStart}–${state.stringEnd} • Frets ${state.fretStart}–${state.fretEnd}`;
+            }
+
+            /**
+             * RESET FEEDBACK TO IDLE ("Tap a Note!")
+             */
+            function setFeedbackIdle() {
+                els.feedbackCard.className = 'glass-panel rounded-3xl p-4 my-auto flex flex-col items-center justify-center text-center min-h-[135px] transition-all duration-200 relative overflow-hidden';
+                els.feedbackIconContainer.className = 'w-10 h-10 rounded-2xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center mb-2.5 text-indigo-400 transition-transform duration-200';
+                els.feedbackIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />`;
+                els.feedbackText.className = 'text-base sm:text-lg font-extrabold tracking-tight text-slate-200 leading-tight';
+                els.feedbackText.textContent = 'Tap a Note!';
+                els.feedbackSubtext.textContent = 'Use your right thumb on the note column';
+                els.nextTimerBar.className = 'absolute bottom-0 left-0 right-0 h-1 bg-indigo-500/80 hidden';
+            }
+
+            /**
+             * HANDLE USER NOTE SELECTION
+             */
+            function handleNoteTap(selectedNote, btnElement) {
+                if (state.isLocked) return;
+                state.isLocked = true;
+
+                // Play the guitar sound for the tapped note
+                if (state.soundEnabled) {
+                    guitarAudio.playTappedNoteInContext(selectedNote);
+                }
+
+                const isCorrect = selectedNote === state.currentAnswer;
+                state.totalAttempts += 1;
+
+                if (isCorrect) {
+                    state.correctCount += 1;
+                    state.streak += 1;
+                } else {
+                    state.streak = 0;
+                    // Silently schedule this botched question to be asked again within 2-7 questions
+                    scheduleBotchedQuestion(state.currentString, state.currentFret);
+                }
+
+                updateScoreUI();
+
+                // Highlight buttons
+                if (isCorrect) {
+                    btnElement.classList.add('note-correct');
+                    showFeedbackResult(true, state.currentAnswer, 950);
+                } else {
+                    btnElement.classList.add('note-wrong');
+                    // Also highlight the actual correct button so the user learns visually
+                    const correctBtn = els.noteButtons.find(b => b.getAttribute('data-note') === state.currentAnswer);
+                    if (correctBtn) {
+                        correctBtn.classList.add('note-correct');
+                    }
+                    showFeedbackResult(false, state.currentAnswer, 1500);
+                }
+            }
+
+            /**
+             * SHOW VISUAL FEEDBACK & SCHEDULE NEXT QUESTION
+             */
+            function showFeedbackResult(isCorrect, correctNote, delayMs) {
+                els.nextTimerBar.style.setProperty('--delay-ms', `${delayMs}ms`);
+                const openNote = getOpenStringNote(state.currentString);
+
+                if (isCorrect) {
+                    els.feedbackCard.className = 'glass-panel rounded-3xl p-4 my-auto flex flex-col items-center justify-center text-center min-h-[135px] transition-all duration-200 relative overflow-hidden border-emerald-500/40 bg-emerald-950/25';
+                    els.feedbackIconContainer.className = 'w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mb-2.5 text-emerald-400 scale-110 transition-transform duration-200';
+                    els.feedbackIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />`;
+                    els.feedbackText.className = 'text-lg sm:text-xl font-black tracking-tight text-emerald-400 leading-tight';
+                    els.feedbackText.textContent = 'Correct!';
+                    els.feedbackSubtext.textContent = `${getOrdinal(state.currentString)} string, ${getOrdinal(state.currentFret)} fret is ${correctNote}`;
+                    els.nextTimerBar.className = 'absolute bottom-0 left-0 right-0 h-1 bg-emerald-400 progress-Drain';
+                } else {
+                    els.feedbackCard.className = 'glass-panel rounded-3xl p-4 my-auto flex flex-col items-center justify-center text-center min-h-[135px] transition-all duration-200 relative overflow-hidden border-rose-500/40 bg-rose-950/25';
+                    els.feedbackIconContainer.className = 'w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center mb-2.5 text-rose-400 scale-110 transition-transform duration-200';
+                    els.feedbackIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />`;
+                    els.feedbackText.className = 'text-base sm:text-lg font-black tracking-tight text-rose-400 leading-snug';
+                    els.feedbackText.textContent = `Incorrect. The note is ${correctNote}.`;
+                    els.feedbackSubtext.textContent = `${getOrdinal(state.currentString)} string (${openNote}) + ${state.currentFret} semitones`;
+                    els.nextTimerBar.className = 'absolute bottom-0 left-0 right-0 h-1 bg-rose-400 progress-Drain';
+                }
+
+                state.nextQuestionTimer = setTimeout(() => {
+                    generateQuestion();
+                }, delayMs);
+            }
+
+            /**
+             * UPDATE SCORE COUNTER & ACCURACY
+             */
+            function updateScoreUI() {
+                els.scoreDisplay.textContent = `Score: ${state.correctCount} / ${state.totalAttempts}`;
+                const accuracy = state.totalAttempts > 0
+                    ? Math.round((state.correctCount / state.totalAttempts) * 100)
+                    : 0;
+                els.accuracyBadge.textContent = `${accuracy}%`;
+                els.streakCount.textContent = state.streak;
+            }
+
+            /**
+             * CLEAR HIGHLIGHT CLASSES ON NOTE BUTTONS
+             */
+            function resetButtonHighlights() {
+                els.noteButtons.forEach(btn => {
+                    btn.classList.remove('note-correct', 'note-wrong');
+                });
+            }
+
+            /**
+             * MODAL CONTROLS
+             */
+            function openSettingsModal() {
+                syncDropdownsWithState();
+                els.settingsModal.classList.remove('opacity-0', 'pointer-events-none');
+                els.settingsModalContent.classList.remove('scale-95');
+                els.settingsModalContent.classList.add('scale-100');
+                els.settingsModal.setAttribute('aria-hidden', 'false');
+            }
+
+            function closeSettingsModal() {
+                els.settingsModal.classList.add('opacity-0', 'pointer-events-none');
+                els.settingsModalContent.classList.remove('scale-100');
+                els.settingsModalContent.classList.add('scale-95');
+                els.settingsModal.setAttribute('aria-hidden', 'true');
+            }
+
+            function applySettings() {
+                let sStart = parseInt(els.stringStartSelect.value, 10);
+                let sEnd = parseInt(els.stringEndSelect.value, 10);
+                let fStart = parseInt(els.fretStartSelect.value, 10);
+                let fEnd = parseInt(els.fretEndSelect.value, 10);
+                const newTuningOffset = parseInt(els.tuningSelect.value, 10);
+                const newSoundEnabled = Boolean(els.soundToggleInput.checked);
+                const newScrambleNotes = Boolean(els.scrambleToggleInput.checked);
+
+                // Ensure start <= end
+                if (sStart > sEnd) [sStart, sEnd] = [sEnd, sStart];
+                if (fStart > fEnd) [fStart, fEnd] = [fEnd, fStart];
+
+                state.stringStart = sStart;
+                state.stringEnd = sEnd;
+                state.fretStart = fStart;
+                state.fretEnd = fEnd;
+                state.tuningOffset = newTuningOffset;
+                state.soundEnabled = newSoundEnabled;
+                state.scrambleNotes = newScrambleNotes;
+
+                closeSettingsModal();
+                generateQuestion();
+            }
+
+            function resetToDefaults() {
+                els.scrambleToggleInput.checked = true;
+                els.soundToggleInput.checked = false;
+                els.tuningSelect.value = 0;
+                populateStringDropdownLabels(0);
+                els.stringStartSelect.value = 1;
+                els.stringEndSelect.value = 6;
+                els.fretStartSelect.value = 0;
+                els.fretEndSelect.value = 24;
+            }
+
+            /**
+             * ATTACH EVENT LISTENERS
+             */
+            function initEvents() {
+                // Unlock Web Audio on first user interaction anywhere in the app
+                const unlockAudioHandler = (e) => {
+                    guitarAudio.initContext();
+                    if (!guitarAudio.unlocked && guitarAudio.ctx && guitarAudio.ctx.state === 'running') {
+                        guitarAudio.unlocked = true;
+                        // If the initial question note was blocked by browser autoplay policy,
+                        // and the user didn't tap a note button directly, play the question note now.
+                        const tappedNoteBtn = e.target && e.target.closest && e.target.closest('.note-btn');
+                        if (guitarAudio.pendingQuestionPlay && !tappedNoteBtn && state.soundEnabled) {
+                            guitarAudio.pendingQuestionPlay = false;
+                            guitarAudio.playStringFret(state.currentString, state.currentFret);
+                        }
+                    }
+                };
+                document.addEventListener('pointerdown', unlockAudioHandler, { passive: true });
+
+                // Replay Current Question Note Button
+                els.replayNoteBtn.addEventListener('click', () => {
+                    guitarAudio.initContext();
+                    const prevSound = state.soundEnabled;
+                    state.soundEnabled = true;
+                    guitarAudio.playStringFret(state.currentString, state.currentFret);
+                    state.soundEnabled = prevSound;
+                });
+
+                // Note button taps
+                els.noteButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const note = btn.getAttribute('data-note');
+                        handleNoteTap(note, btn);
+                    });
+                });
+
+                // Reset Score Button
+                els.resetScoreBtn.addEventListener('click', () => {
+                    state.correctCount = 0;
+                    state.totalAttempts = 0;
+                    state.streak = 0;
+                    state.retryQueue = [];
+                    updateScoreUI();
+                    generateQuestion();
+                });
+
+                // Settings Modal Triggers
+                els.openSettingsBtn.addEventListener('click', openSettingsModal);
+                els.closeSettingsBtn.addEventListener('click', closeSettingsModal);
+                els.saveSettingsBtn.addEventListener('click', applySettings);
+                els.resetDefaultsBtn.addEventListener('click', resetToDefaults);
+
+                // Close modal when clicking backdrop
+                els.settingsModal.addEventListener('click', (e) => {
+                    if (e.target === els.settingsModal) {
+                        closeSettingsModal();
+                    }
+                });
+            }
+
+            /**
+             * INITIALIZE APP ON LOAD
+             */
+            window.addEventListener('DOMContentLoaded', () => {
+                populateDropdowns();
+                attachDropdownValidation();
+                initEvents();
+                updateScoreUI();
+                generateQuestion();
+            });
+        })();
+    </script>
+</body>
+</html>
